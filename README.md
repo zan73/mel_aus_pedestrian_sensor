@@ -84,7 +84,7 @@ create table sensor_counts_stg(
 LOAD DATA LOW_PRIORITY LOCAL INFILE 'Pedestrian_Counting_System_-_Monthly__counts_per_hour_.csv' INTO TABLE `mel_aus_foot_traffic`.`sensor_counts_stg` CHARACTER SET utf8 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' LINES TERMINATED BY '\n' IGNORE 1 LINES (`ID`, `Date_Time`, `YEAR`, `MONTH`, `Mdate`, `DAY`, `TIME`, `Sensor_ID`, `Sensor_Name`, `Hourly_Counts`);
 ```
 
-- ID appears to be the record identifier - check for duplicates. Regular ETL would check for duplicates and potentially write to an error file 
+- ID appears to be the record identifier - check for duplicates. Regular ETL would check for duplicates and potentially write to an error file to be checked whether record is an update to an existing record, etc. bigint rather than int is best, as int may not be large enough if the number of records is huge
 - YEAR, MONTH, Mdate, DAY, TIME appear unnecessary - Date_Time field cast as timestamp will more efficiently store all required information
 - Sensor_ID is our foreign key to sensor table. Regular ETL would perform checks to ensure that all Sensor_IDs in this dataset are matched to sensor_ids in sensor table. 
 - Sensor_Name is unnecessary as it can be derived from sensor table. Check whether some sensor_count records do not align with sensor table. If the name changes over time, we could do some further analysis and capture name changes in a history table or make the sensor table a slowly-changing dimension table. 
@@ -95,6 +95,8 @@ LOAD DATA LOW_PRIORITY LOCAL INFILE 'Pedestrian_Counting_System_-_Monthly__count
 #### Data type/primary key testing:
 ID uniqueness:
 ```
+--Returns 0 records - field is unique
+
 SELECT ID
 FROM sensor_counts_stg
 GROUP BY ID
@@ -102,14 +104,30 @@ HAVING COUNT(*) > 1
 ```
 Date_Time datatype conversion check:
 ```
+--No errors returned, datatype convesion OK
 
+SELECT STR_TO_DATE(Date_Time , '%M %d, %Y %h:%i:%s %p') AS date_time
+FROM sensor_counts_stg
+GROUP BY STR_TO_DATE(Date_Time , '%M %d, %Y %h:%i:%s %p')
 ```
+Sensor_Name checks:
+```
+--Name has changed over time - possibly create a history table or SCD type 2 or analyse to confirm that id and . For now, ignore sensor_name
+
+SELECT sensor_id FROM (
+SELECT DISTINCT sensor_id, sensor_name
+FROM sensor_counts_stg
+) A
+GROUP BY sensor_id
+HAVING COUNT(*)>1
+```
+
 
 ```mermaid
 erDiagram
     sensor ||..o{ sensor_count : collects
       sensor {
-        int sensor_id PK
+        bigint sensor_id PK
         string sensor_description
         string sensor_name
 	date installation_date
