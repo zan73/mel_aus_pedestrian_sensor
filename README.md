@@ -104,3 +104,27 @@ Date_Time datatype conversion check:
 ```
 
 ```
+
+```mermaid
+erDiagram
+    sensor ||..o{ sensor_count : collects
+      sensor {
+        int sensor_id PK
+        string sensor_description
+        string sensor_name
+	date installation_date
+	string status
+	string note
+	string direction_1
+	string direction_2
+	decimal latitude
+	decimal longitude
+    }
+    sensor_count {
+        int ID PK
+        timestamp date_time
+        int sensor_id FK
+	int hourly_counts
+    }
+    
+```
