@@ -219,5 +219,33 @@ WHERE Row_Num <= 10
 ORDER BY `month`, Row_Num
 ```
 
-•	Which location has shown most decline due to lockdowns in last 2 years
+# Which location has shown most decline due to lockdowns in last 2 years
+```
+#Most decline in last 2 years since lockdown
+#Take 2019 monthly figures as baseline and compare monthly counts
+SELECT base.sensor_id, A.sensor_description, base.`month`, base.monthly_count, future.monthly_count_avg, future.monthly_count_avg/base.monthly_count AS percent_of_prelockdown
+FROM (
+SELECT sensor_id, MONTH(date_time) AS `month`, SUM(hourly_counts) AS monthly_count
+FROM sensor_counts
+WHERE YEAR(date_time) = 2019
+GROUP BY sensor_id, MONTH(date_time)
+) base
+JOIN (
+	SELECT sensor_id, `month`, AVG(monthly_count) AS monthly_count_avg
+	FROM (
+		SELECT sensor_id, MONTH(date_time) AS `month`, YEAR(date_time), SUM(hourly_counts) AS monthly_count
+		FROM sensor_counts
+		WHERE YEAR(date_time) > 2019
+		AND date_time < '2021-08-01'
+		AND date_time >= '2020-03-01'
+		GROUP BY sensor_id, MONTH(date_time), YEAR(date_time)
+	) months
+	GROUP BY sensor_id, `month`
+) future
+  ON base.sensor_id = future.sensor_id
+  AND base.`month` = future.`month`
+JOIN sensor A
+  ON base.sensor_id = A.sensor_id
+ORDER BY future.monthly_count_avg/base.monthly_count
+```
 •	Which location has most growth in last year
