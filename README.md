@@ -187,20 +187,37 @@ erDiagram
 #Top 10 (most pedestrians) locations by day
 SELECT *
 FROM (
-	SELECT *, ROW_NUMBER() OVER (PARTITION BY sensor_id, sensor_description, "date" ORDER BY SUM(daily_count)) AS Row_Num
+	SELECT A.sensor_id, B.sensor_description, A.`date`, A.daily_count, ROW_NUMBER() OVER (PARTITION BY A.`date` ORDER BY daily_count DESC) AS Row_Num
 	FROM (
-		SELECT A.sensor_id, A.sensor_description, CAST(B.date_time AS DATE) AS "date", SUM(B.hourly_counts) AS daily_count
-		FROM sensor A
-		JOIN sensor_counts B
-		  ON A.sensor_id = B.sensor_id
-		GROUP BY A.sensor_id, A.sensor_description, CAST(B.date_time AS DATE)
+		SELECT sensor_id, CAST(date_time AS DATE) AS `date`, SUM(hourly_counts) AS daily_count
+		FROM sensor_counts
+		GROUP BY sensor_id, CAST(date_time AS DATE)
 	) A
-) B
+	JOIN sensor B
+     ON A.sensor_id = B.sensor_id
+) C
 WHERE Row_Num <= 10
-ORDER BY "date", Row_Num
+ORDER BY `date`, Row_Num
 ```
 
 
-•	Top 10 (most pedestrians) locations by month
+## Top 10 (most pedestrians) locations by month
+```
+#Top 10 (most pedestrians) locations by month
+SELECT *
+FROM (
+	SELECT A.sensor_id, B.sensor_description, A.`month`, A.monthly_count, ROW_NUMBER() OVER (PARTITION BY A.`month` ORDER BY monthly_count DESC) AS Row_Num
+	FROM (
+		SELECT sensor_id, LAST_DAY(date_time) AS `month`, SUM(hourly_counts) AS monthly_count
+		FROM sensor_counts
+		GROUP BY sensor_id, LAST_DAY(date_time)
+	) A
+	JOIN sensor B
+     ON A.sensor_id = B.sensor_id
+) C
+WHERE Row_Num <= 10
+ORDER BY `month`, Row_Num
+```
+
 •	Which location has shown most decline due to lockdowns in last 2 years
 •	Which location has most growth in last year
