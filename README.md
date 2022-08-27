@@ -158,6 +158,8 @@ FROM sensor_counts_stg
 
 
 # Entity-Relationship diagram
+This is a simple one to many relationship, as identified in the counts dataset, sensor name may be changing over time so potentially the sensor table could be enhancend with effective from/to dates to capture a history of attribute changes over time.
+
 ```mermaid
 erDiagram
     sensor ||..o{ sensor_count : collects
@@ -279,3 +281,6 @@ GROUP BY base.sensor_id
 ORDER BY AVG(future.monthly_count/base.monthly_count) DESC
 LIMIT 1
 ```
+
+# Other metrics
+As the counts data is hourly, we could analyse the popularity of locations at times of day, particularly night-time areas, and use this to increase policing or modify traffic light behaviour, other geo-graphic datasets might be useful in this regard.
