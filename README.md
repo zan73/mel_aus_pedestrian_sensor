@@ -122,7 +122,29 @@ GROUP BY sensor_id
 HAVING COUNT(*)>1
 ```
 
+Other Datatype conversion checks - Hourly_Counts column on visual inspection contains commas, so perform a replace to remove commas prior to casting as integer:
+```
+All rows converted successfully
+SELECT
+	CAST(ID AS INTEGER) AS id
+	,CAST(sensor_id AS INTEGER) AS sensor_id
+	,CAST(REPLACE(Hourly_Counts,',','') AS INTEGER) AS hourly_counts
+FROM sensor_counts_stg
+```
 
+#### Load to final table
+```
+CREATE TABLE sensor_counts AS
+SELECT
+	CAST(ID AS INTEGER) AS id
+	,STR_TO_DATE(Date_Time, '%M %d, %Y %h:%i:%s %p') AS date_time
+	,CAST(sensor_id AS INTEGER) AS sensor_id
+	,CAST(REPLACE(Hourly_Counts,',','') AS INTEGER) AS hourly_counts
+FROM sensor_counts_stg
+```
+
+
+#Entity-Relationship diagram
 ```mermaid
 erDiagram
     sensor ||..o{ sensor_count : collects
