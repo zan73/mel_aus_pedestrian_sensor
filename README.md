@@ -252,4 +252,30 @@ GROUP BY base.sensor_id
 ORDER BY AVG(future.monthly_count_avg/base.monthly_count)
 LIMIT 1
 ```
-•	Which location has most growth in last year
+
+# Which location has most growth in last year
+```
+#Most growth in last year
+#Take June 2020 to July 2021 as baseline, June 2021 to July 2022 as future (assuming August 2022 is incomplete)
+
+#Result was sensor_id = 54 (Lincoln-Swanston (West))
+
+SELECT base.sensor_id, AVG(future.monthly_count/base.monthly_count) AS percent_yoy_avg
+FROM (
+SELECT sensor_id, MONTH(date_time) AS `month`, SUM(hourly_counts) AS monthly_count
+FROM sensor_counts
+WHERE date_time BETWEEN '2020-06-01 00:00:00' AND '2021-07-31 23:59:59'
+GROUP BY sensor_id, MONTH(date_time)
+) base
+JOIN (
+	SELECT sensor_id, MONTH(date_time) AS `month`, SUM(hourly_counts) AS monthly_count
+	FROM sensor_counts
+   WHERE date_time BETWEEN '2021-06-01 00:00:00' AND '2022-07-31 23:59:59'
+	GROUP BY sensor_id, MONTH(date_time)
+) future
+  ON base.sensor_id = future.sensor_id
+  AND base.`month` = future.`month`
+GROUP BY base.sensor_id
+ORDER BY AVG(future.monthly_count/base.monthly_count) DESC
+LIMIT 1
+```
