@@ -88,8 +88,6 @@ LOAD DATA LOW_PRIORITY LOCAL INFILE 'Pedestrian_Counting_System_-_Monthly__count
 - YEAR, MONTH, Mdate, DAY, TIME appear unnecessary - Date_Time field cast as timestamp will more efficiently store all required information
 - Sensor_ID is our foreign key to sensor table. Regular ETL would perform checks to ensure that all Sensor_IDs in this dataset are matched to sensor_ids in sensor table. 
 - Sensor_Name is unnecessary as it can be derived from sensor table. Check whether some sensor_count records do not align with sensor table. If the name changes over time, we could do some further analysis and capture name changes in a history table or make the sensor table a slowly-changing dimension table. 
-- if sensor_ids are all numeric, would potentially be more efficient for query performance and storage to store as integer
-- installation_date, latitude and longitude would be stored as date and decimal(12,9) provided they pass datatype conversions, these datatypes would be more efficient for querying and usage for date/GIS functions.
 - Ensure Hourly_Counts column is numeric
 
 #### Data type/primary key testing:
@@ -122,9 +120,24 @@ GROUP BY sensor_id
 HAVING COUNT(*)>1
 ```
 
+All sensor_ids in sensor_count_stg exist in sensor table
+```
+--No rows returned
+
+SELECT sensor_id
+FROM sensor_counts_stg A
+WHERE NOT EXISTS (
+    SELECT NULL
+    FROM sensor B
+    WHERE A.sensor_id = B.sensor_id
+)
+GROUP BY sensor_id
+```
+
 Other Datatype conversion checks - Hourly_Counts column on visual inspection contains commas, so perform a replace to remove commas prior to casting as integer:
 ```
-All rows converted successfully
+--All rows converted successfully
+
 SELECT
 	CAST(ID AS INTEGER) AS id
 	,CAST(sensor_id AS INTEGER) AS sensor_id
@@ -144,7 +157,7 @@ FROM sensor_counts_stg
 ```
 
 
-#Entity-Relationship diagram
+# Entity-Relationship diagram
 ```mermaid
 erDiagram
     sensor ||..o{ sensor_count : collects
@@ -168,3 +181,26 @@ erDiagram
     }
     
 ```
+# Analysis queries
+## Top 10 (most pedestrians) locations by day
+```
+#Top 10 (most pedestrians) locations by day
+SELECT *
+FROM (
+	SELECT *, ROW_NUMBER() OVER (PARTITION BY sensor_id, sensor_description, "date" ORDER BY SUM(daily_count)) AS Row_Num
+	FROM (
+		SELECT A.sensor_id, A.sensor_description, CAST(B.date_time AS DATE) AS "date", SUM(B.hourly_counts) AS daily_count
+		FROM sensor A
+		JOIN sensor_counts B
+		  ON A.sensor_id = B.sensor_id
+		GROUP BY A.sensor_id, A.sensor_description, CAST(B.date_time AS DATE)
+	) A
+) B
+WHERE Row_Num <= 10
+ORDER BY "date", Row_Num
+```
+
+
+•	Top 10 (most pedestrians) locations by month
+•	Which location has shown most decline due to lockdowns in last 2 years
+•	Which location has most growth in last year
